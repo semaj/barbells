@@ -1,9 +1,10 @@
 use macroquad::prelude::*;
 use macroquad::rand::*;
 
+const PI: f32 = std::f32::consts::PI;
 const SHIP_HEIGHT: f32 = 25.0;
 const SHIP_BASE: f32 = 12.5;
-const BARBELL_WIDTH: f32 = 40.0;
+const BARBELL_WIDTH: f32 = 80.0;
 const ROTATION: f32 = 10.0;
 
 struct Ship {
@@ -41,6 +42,7 @@ impl Ship {
     fn vroom(&mut self) {
         self.middle += self.vel;
         wrap(&mut self.middle);
+        // TODO: Deceleration
     }
 
     fn accelerate(&mut self, delta: Vec2) {
@@ -55,21 +57,64 @@ struct Barbell {
     middle: Vec2,
     rot: f32,
     vel: Vec2,
+    clockwise: bool,
 }
 
 impl Barbell {
     const LEFT: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, 0.0);
     const RIGHT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, 0.0);
+    const LEFT_BELL_BOT: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, BARBELL_WIDTH / 6.0);
+    const LEFT_BELL_TOP: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
+    const RIGHT_BELL_BOT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, BARBELL_WIDTH / 6.0);
+    const RIGHT_BELL_TOP: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
+
     fn draw(&self) {
         let rotation = Mat2::from_angle(self.rot);
+        // Rotate bar
         let left = (rotation * Self::LEFT) + self.middle;
         let right = (rotation * Self::RIGHT) + self.middle;
+        // Rotate left bell
+        let left_bell_bot = (rotation * Self::LEFT_BELL_BOT) + self.middle;
+        let left_bell_top = (rotation * Self::LEFT_BELL_TOP) + self.middle;
+        // Rotate right bell
+        let right_bell_bot = (rotation * Self::RIGHT_BELL_BOT) + self.middle;
+        let right_bell_top = (rotation * Self::RIGHT_BELL_TOP) + self.middle;
+        // Draw bar
         draw_line(left.x, left.y, right.x, right.y, 3.0, RED);
+        // Draw left bell
+        draw_line(left.x, left.y, left_bell_top.x, left_bell_top.y, 3.0, RED);
+        draw_line(left.x, left.y, left_bell_bot.x, left_bell_bot.y, 3.0, RED);
+        // Draw right bell
+        draw_line(
+            right.x,
+            right.y,
+            right_bell_top.x,
+            right_bell_top.y,
+            3.0,
+            RED,
+        );
+        draw_line(
+            right.x,
+            right.y,
+            right_bell_bot.x,
+            right_bell_bot.y,
+            3.0,
+            RED,
+        );
     }
 
-    fn rotate(&mut self, angle: f32) {
-        self.rot += angle;
-        // let (sin, cos) = angle.sin_cos();
+    fn rotate(&mut self) {
+        if (rand() % 1000) > 990 {
+            self.clockwise = !self.clockwise;
+        }
+        // let rotation = (rand() as f32) % (PI / 120.0);
+        let rotation = PI / 300.0;
+        if self.clockwise {
+            self.rot += rotation;
+        } else {
+            self.rot -= rotation;
+        }
+        self.rot %= PI * 2.0;
     }
 
     fn vroom(&mut self) {
@@ -107,6 +152,7 @@ async fn main() {
         middle: barbell_middle,
         rot: rand() as f32,
         vel: Vec2::new(4.0, 4.0),
+        clockwise: true,
     };
     let rotation = ROTATION.to_radians();
     loop {
@@ -121,13 +167,12 @@ async fn main() {
             // TODO
         }
         if is_key_down(KeyCode::Up) {
-            let orientation = ship.rot + (std::f32::consts::PI / 2.0);
+            let orientation = ship.rot + (PI / 2.0);
             // println!("o {}", orientation.to_degrees() % 360.0);
             let acc = Vec2::new(-orientation.cos(), -orientation.sin()) * 1.0;
             ship.accelerate(acc);
         }
-        // let x: u32 = (std::f32::consts::PI / 8.0) as u32;
-        barbell.rotate((rand() as f32) % (std::f32::consts::PI / 128.0));
+        barbell.rotate();
         barbell.vroom();
         barbell.draw();
         ship.vroom();
