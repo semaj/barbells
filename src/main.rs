@@ -6,11 +6,30 @@ const SHIP_HEIGHT: f32 = 25.0;
 const SHIP_BASE: f32 = 12.5;
 const BARBELL_WIDTH: f32 = 80.0;
 const ROTATION: f32 = 10.0;
+const BARBELL_COLOR: Color = DARKPURPLE;
+const SHIP_COLOR: Color = LIME;
 
 struct Ship {
     middle: Vec2,
     rot: f32,
     vel: Vec2,
+}
+
+// Check if triangle and bell lines intersect
+fn intersect(line_1a: Vec2, line_1b: Vec2, line_2a: Vec2, line_2b: Vec2) -> bool {
+    let x1 = line_1a.x;
+    let x2 = line_1b.x;
+    let x3 = line_2a.x;
+    let x4 = line_2b.x;
+    let y1 = line_1a.y;
+    let y2 = line_1b.y;
+    let y3 = line_2a.y;
+    let y4 = line_2b.y;
+    let u_a = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3))
+        / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+    let u_b = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3))
+        / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+    (0.0..=1.0).contains(&u_a) && (0.0..=1.0).contains(&u_b)
 }
 
 impl Ship {
@@ -31,8 +50,9 @@ impl Ship {
         let top = (rotation * Self::HEIGHT) + self.middle;
         let right = (rotation * Self::RIGHT) + self.middle;
         let left = (rotation * Self::LEFT) + self.middle;
-        draw_triangle(top, left, right, BLUE);
+        draw_triangle(top, left, right, SHIP_COLOR);
     }
+    // just check if the line segments of triangle intersect with bars
 
     fn rotate(&mut self, angle: f32) {
         self.rot += angle;
@@ -42,7 +62,7 @@ impl Ship {
     fn vroom(&mut self) {
         self.middle += self.vel;
         wrap(&mut self.middle);
-        // TODO: Deceleration
+        self.vel *= 0.90;
     }
 
     fn accelerate(&mut self, delta: Vec2) {
@@ -80,10 +100,24 @@ impl Barbell {
         let right_bell_bot = (rotation * Self::RIGHT_BELL_BOT) + self.middle;
         let right_bell_top = (rotation * Self::RIGHT_BELL_TOP) + self.middle;
         // Draw bar
-        draw_line(left.x, left.y, right.x, right.y, 3.0, RED);
+        draw_line(left.x, left.y, right.x, right.y, 3.0, BARBELL_COLOR);
         // Draw left bell
-        draw_line(left.x, left.y, left_bell_top.x, left_bell_top.y, 3.0, RED);
-        draw_line(left.x, left.y, left_bell_bot.x, left_bell_bot.y, 3.0, RED);
+        draw_line(
+            left.x,
+            left.y,
+            left_bell_top.x,
+            left_bell_top.y,
+            3.0,
+            BARBELL_COLOR,
+        );
+        draw_line(
+            left.x,
+            left.y,
+            left_bell_bot.x,
+            left_bell_bot.y,
+            3.0,
+            BARBELL_COLOR,
+        );
         // Draw right bell
         draw_line(
             right.x,
@@ -91,7 +125,7 @@ impl Barbell {
             right_bell_top.x,
             right_bell_top.y,
             3.0,
-            RED,
+            BARBELL_COLOR,
         );
         draw_line(
             right.x,
@@ -99,7 +133,7 @@ impl Barbell {
             right_bell_bot.x,
             right_bell_bot.y,
             3.0,
-            RED,
+            BARBELL_COLOR,
         );
     }
 
@@ -148,10 +182,12 @@ async fn main() {
     };
     let mut barbell_middle = Vec2::new(rand() as f32, rand() as f32);
     wrap(&mut barbell_middle);
+    let rx = (rand() as f32) % 5.0;
+    let ry = (rand() as f32) % 5.0;
     let mut barbell = Barbell {
         middle: barbell_middle,
         rot: rand() as f32,
-        vel: Vec2::new(4.0, 4.0),
+        vel: Vec2::new(rx, ry),
         clockwise: true,
     };
     let rotation = ROTATION.to_radians();
