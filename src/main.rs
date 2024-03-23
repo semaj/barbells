@@ -171,11 +171,12 @@ impl Barbell {
 
     fn new(ship_middle: Vec2) -> Self {
         let mut barbell_middle = random_pos();
-        while barbell_middle.distance(ship_middle) < SHIP_HEIGHT * 2.0 {
+        while barbell_middle.distance(ship_middle) < SHIP_HEIGHT * 4.0 {
             barbell_middle = random_pos();
         }
-        let rx = (rand() as f32) % 5.0;
-        let ry = (rand() as f32) % 5.0;
+        let rx = gen_range(-4.0, 4.0);
+        let ry = gen_range(-4.0, 4.0);
+        // println!("x:{}, y:{}", rx, ry);
         Barbell {
             middle: barbell_middle,
             rot: rand() as f32,
@@ -251,11 +252,11 @@ impl Barbell {
     }
 
     fn rotate(&mut self) {
-        if (rand() % 1000) > 990 {
+        if (rand() % 1000) > 997 {
             self.clockwise = !self.clockwise;
         }
         // let rotation = (rand() as f32) % (PI / 120.0);
-        let rotation = PI / 300.0;
+        let rotation = PI / 500.0;
         if self.clockwise {
             self.rot += rotation;
         } else {
@@ -368,6 +369,9 @@ async fn main() {
         if is_key_down(KeyCode::Up) {
             game.ship.accelerate();
         }
+        // if is_key_down(KeyCode::Enter) {
+        //     game = Game::new();
+        // }
         game.step();
         game.draw();
 
