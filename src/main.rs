@@ -5,7 +5,7 @@ const PI: f32 = std::f32::consts::PI;
 const SHIP_HEIGHT: f32 = 25.0;
 const SHIP_BASE: f32 = 12.5;
 const BARBELL_WIDTH: f32 = 80.0;
-const ROTATION: f32 = 10.0;
+const SHIP_ROTATION_DELTA: f32 = 10.0;
 const BARBELL_COLOR: Color = DARKPURPLE;
 const SHIP_COLOR: Color = LIME;
 
@@ -19,7 +19,7 @@ struct Ship {
     left: Vec2,
 }
 
-// Check if triangle and bell lines intersect
+// intersect checks if two lines intersect
 fn intersect(line_1a: &Vec2, line_1b: &Vec2, line_2a: &Vec2, line_2b: &Vec2) -> bool {
     let x1 = line_1a.x;
     let x2 = line_1b.x;
@@ -40,6 +40,19 @@ impl Ship {
     const HEIGHT: Vec2 = Vec2::new(0.0, -SHIP_HEIGHT / 2.0);
     const RIGHT: Vec2 = Vec2::new(SHIP_BASE / 2.0, SHIP_HEIGHT / 2.0);
     const LEFT: Vec2 = Vec2::new(-SHIP_BASE / 2.0, SHIP_HEIGHT / 2.0);
+
+    fn new() -> Self {
+        let mid: Vec2 = Vec2::new(screen_width() / 2.0, screen_height() / 2.0);
+        Ship {
+            middle: mid,
+            rot: 0.0,
+            vel: Vec2::ZERO,
+            // Loaded
+            top: Vec2::ZERO,
+            right: Vec2::ZERO,
+            left: Vec2::ZERO,
+        }
+    }
     fn draw(&self) {
         if self.middle.x < SHIP_HEIGHT / 2.0 || self.middle.x > screen_width() - (SHIP_HEIGHT / 2.0)
         {
@@ -116,8 +129,11 @@ impl Ship {
         self.reload()
     }
 
-    fn accelerate(&mut self, delta: Vec2) {
-        self.vel += delta;
+    fn accelerate(&mut self) {
+        let orientation = self.rot + (PI / 2.0);
+        // println!("o {}", orientation.to_degrees() % 360.0);
+        let acc = Vec2::new(-orientation.cos(), -orientation.sin()) * 1.0;
+        self.vel += acc;
         if self.vel.length() > 10.0 {
             self.vel = self.vel.normalize() * 10.0;
         }
@@ -145,6 +161,26 @@ impl Barbell {
     const LEFT_BELL_TOP: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
     const RIGHT_BELL_BOT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, BARBELL_WIDTH / 6.0);
     const RIGHT_BELL_TOP: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
+
+    fn new() -> Self {
+        let mut barbell_middle = Vec2::new(rand() as f32, rand() as f32);
+        wrap(&mut barbell_middle);
+        let rx = (rand() as f32) % 5.0;
+        let ry = (rand() as f32) % 5.0;
+        Barbell {
+            middle: barbell_middle,
+            rot: rand() as f32,
+            vel: Vec2::new(rx, ry),
+            clockwise: true,
+            // Loaded
+            right: Vec2::ZERO,
+            left: Vec2::ZERO,
+            left_bell_top: Vec2::ZERO,
+            left_bell_bot: Vec2::ZERO,
+            right_bell_top: Vec2::ZERO,
+            right_bell_bot: Vec2::ZERO,
+        }
+    }
 
     fn draw(&self) {
         // Draw bar
@@ -241,69 +277,77 @@ fn wrap(v: &mut Vec2) {
     }
 }
 
+struct Game {
+    game_over: bool,
+    ship: Ship,
+    barbells: Vec<Barbell>,
+    // num_barbells: usize,
+}
+
+impl Game {
+    fn new(num_barbells: usize) -> Self {
+        let mut barbells = Vec::new();
+        for _ in 0..num_barbells {
+            barbells.push(Barbell::new());
+        }
+        Game {
+            game_over: false,
+            ship: Ship::new(),
+            barbells,
+            // num_barbells,
+        }
+    }
+
+    fn step(&mut self) {
+        self.ship.vroom();
+        for barbell in self.barbells.iter_mut() {
+            barbell.rotate();
+            barbell.vroom();
+            if self.ship.hits_bells(barbell) {
+                self.game_over = true;
+            }
+        }
+        self.barbells
+            .retain(|barbell| !self.ship.hits_center(barbell))
+    }
+
+    fn draw(&self) {
+        self.ship.draw();
+        for barbell in self.barbells.iter() {
+            barbell.draw();
+        }
+    }
+}
+
 #[macroquad::main("InputKeys")]
 async fn main() {
-    let mid = Vec2::new(screen_width() / 2.0, screen_height() / 2.0);
-    let mut ship = Ship {
-        middle: mid,
-        rot: 0.0,
-        vel: Vec2::ZERO,
-        // Loaded
-        top: Vec2::ZERO,
-        right: Vec2::ZERO,
-        left: Vec2::ZERO,
-    };
-    let mut barbell_middle = Vec2::new(rand() as f32, rand() as f32);
-    wrap(&mut barbell_middle);
-    let rx = (rand() as f32) % 5.0;
-    let ry = (rand() as f32) % 5.0;
-    let mut barbell = Barbell {
-        middle: barbell_middle,
-        rot: rand() as f32,
-        vel: Vec2::new(rx, ry),
-        clockwise: true,
-        // Loaded
-        right: Vec2::ZERO,
-        left: Vec2::ZERO,
-        left_bell_top: Vec2::ZERO,
-        left_bell_bot: Vec2::ZERO,
-        right_bell_top: Vec2::ZERO,
-        right_bell_bot: Vec2::ZERO,
-    };
-    let rotation = ROTATION.to_radians();
+    let ship_rotation_delta_rad = SHIP_ROTATION_DELTA.to_radians();
+    let mut game = Game::new(2);
     loop {
         clear_background(WHITE);
+        if game.game_over {
+            draw_text("GAME OVER", 50.0, 50.0, 50.0, RED);
+            if is_key_down(KeyCode::Enter) {
+                game = Game::new(2);
+            }
+            next_frame().await;
+            continue;
+        }
         if is_key_down(KeyCode::Right) {
-            ship.rotate(rotation);
+            game.ship.rotate(ship_rotation_delta_rad);
         }
         if is_key_down(KeyCode::Left) {
-            ship.rotate(-rotation);
+            game.ship.rotate(-ship_rotation_delta_rad);
         }
         if is_key_down(KeyCode::Down) {
             // TODO
         }
         if is_key_down(KeyCode::Up) {
-            let orientation = ship.rot + (PI / 2.0);
-            // println!("o {}", orientation.to_degrees() % 360.0);
-            let acc = Vec2::new(-orientation.cos(), -orientation.sin()) * 1.0;
-            ship.accelerate(acc);
+            game.ship.accelerate();
         }
-        barbell.rotate();
+        game.step();
+        game.draw();
 
-        barbell.vroom();
-        ship.vroom();
-
-        // check if collision
-        if ship.hits_bells(&barbell) {
-            draw_text("NO", 50.0, 50.0, 50.0, RED)
-        }
-        // check if collision
-        if ship.hits_center(&barbell) {
-            draw_text("YES", 70.0, 70.0, 70.0, GREEN)
-        }
-
-        ship.draw();
-        barbell.draw();
         draw_text("barbells", 20.0, 20.0, 20.0, BLUE);
         next_frame().await
     }
