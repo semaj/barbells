@@ -1,12 +1,13 @@
 use macroquad::prelude::*;
 use macroquad::rand::*;
 
+const NUM_BARBELL_BASE: usize = 2;
 const PI: f32 = std::f32::consts::PI;
 const SHIP_HEIGHT: f32 = 25.0;
 const SHIP_BASE: f32 = 12.5;
-const BARBELL_WIDTH: f32 = 80.0;
+const BARBELL_WIDTH: f32 = 100.0;
 const SHIP_ROTATION_DELTA: f32 = 10.0;
-const BARBELL_COLOR: Color = DARKPURPLE;
+const BARBELL_COLOR: Color = BLUE;
 const SHIP_COLOR: Color = LIME;
 
 struct Ship {
@@ -140,6 +141,12 @@ impl Ship {
     }
 }
 
+fn random_pos() -> Vec2 {
+    let x = rand() as f32 % screen_width();
+    let y = rand() as f32 % screen_height();
+    Vec2::new(x, y)
+}
+
 struct Barbell {
     middle: Vec2,
     rot: f32,
@@ -162,9 +169,11 @@ impl Barbell {
     const RIGHT_BELL_BOT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, BARBELL_WIDTH / 6.0);
     const RIGHT_BELL_TOP: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
 
-    fn new() -> Self {
-        let mut barbell_middle = Vec2::new(rand() as f32, rand() as f32);
-        wrap(&mut barbell_middle);
+    fn new(ship_middle: Vec2) -> Self {
+        let mut barbell_middle = random_pos();
+        while barbell_middle.distance(ship_middle) < SHIP_HEIGHT * 2.0 {
+            barbell_middle = random_pos();
+        }
         let rx = (rand() as f32) % 5.0;
         let ry = (rand() as f32) % 5.0;
         Barbell {
@@ -199,7 +208,7 @@ impl Barbell {
             self.left_bell_top.x,
             self.left_bell_top.y,
             3.0,
-            BARBELL_COLOR,
+            RED,
         );
         draw_line(
             self.left.x,
@@ -207,7 +216,7 @@ impl Barbell {
             self.left_bell_bot.x,
             self.left_bell_bot.y,
             3.0,
-            BARBELL_COLOR,
+            RED,
         );
         // Draw self.right bell
         draw_line(
@@ -216,7 +225,7 @@ impl Barbell {
             self.right_bell_top.x,
             self.right_bell_top.y,
             3.0,
-            BARBELL_COLOR,
+            RED,
         );
         draw_line(
             self.right.x,
@@ -224,7 +233,7 @@ impl Barbell {
             self.right_bell_bot.x,
             self.right_bell_bot.y,
             3.0,
-            BARBELL_COLOR,
+            RED,
         );
     }
 
@@ -281,20 +290,21 @@ struct Game {
     game_over: bool,
     ship: Ship,
     barbells: Vec<Barbell>,
-    // num_barbells: usize,
+    level: usize,
 }
 
 impl Game {
-    fn new(num_barbells: usize) -> Self {
+    fn new() -> Self {
+        let ship = Ship::new();
         let mut barbells = Vec::new();
-        for _ in 0..num_barbells {
-            barbells.push(Barbell::new());
+        for _ in 0..NUM_BARBELL_BASE {
+            barbells.push(Barbell::new(ship.middle));
         }
         Game {
             game_over: false,
-            ship: Ship::new(),
+            level: 1,
+            ship,
             barbells,
-            // num_barbells,
         }
     }
 
@@ -308,7 +318,17 @@ impl Game {
             }
         }
         self.barbells
-            .retain(|barbell| !self.ship.hits_center(barbell))
+            .retain(|barbell| !self.ship.hits_center(barbell));
+        if self.barbells.is_empty() {
+            self.level_up();
+        }
+    }
+
+    fn level_up(&mut self) {
+        self.level += 1;
+        for _ in 0..(NUM_BARBELL_BASE * self.level) {
+            self.barbells.push(Barbell::new(self.ship.middle));
+        }
     }
 
     fn draw(&self) {
@@ -321,14 +341,17 @@ impl Game {
 
 #[macroquad::main("InputKeys")]
 async fn main() {
+    rand::srand(macroquad::miniquad::date::now() as _);
     let ship_rotation_delta_rad = SHIP_ROTATION_DELTA.to_radians();
-    let mut game = Game::new(2);
+    let mut game = Game::new();
     loop {
         clear_background(WHITE);
+        draw_text("barbells", 20.0, 20.0, 20.0, BLUE);
+        draw_text(&format!("level: {}", game.level), 20.0, 50.0, 20.0, BLUE);
         if game.game_over {
-            draw_text("GAME OVER", 50.0, 50.0, 50.0, RED);
+            draw_text("GAME OVER (press enter)", 150.0, 50.0, 50.0, RED);
             if is_key_down(KeyCode::Enter) {
-                game = Game::new(2);
+                game = Game::new();
             }
             next_frame().await;
             continue;
@@ -348,7 +371,6 @@ async fn main() {
         game.step();
         game.draw();
 
-        draw_text("barbells", 20.0, 20.0, 20.0, BLUE);
         next_frame().await
     }
 }
