@@ -13,10 +13,14 @@ struct Ship {
     middle: Vec2,
     rot: f32,
     vel: Vec2,
+    // Loaded
+    top: Vec2,
+    right: Vec2,
+    left: Vec2,
 }
 
 // Check if triangle and bell lines intersect
-fn intersect(line_1a: Vec2, line_1b: Vec2, line_2a: Vec2, line_2b: Vec2) -> bool {
+fn intersect(line_1a: &Vec2, line_1b: &Vec2, line_2a: &Vec2, line_2b: &Vec2) -> bool {
     let x1 = line_1a.x;
     let x2 = line_1b.x;
     let x3 = line_2a.x;
@@ -46,13 +50,59 @@ impl Ship {
         {
             return;
         }
-        let rotation = Mat2::from_angle(self.rot);
-        let top = (rotation * Self::HEIGHT) + self.middle;
-        let right = (rotation * Self::RIGHT) + self.middle;
-        let left = (rotation * Self::LEFT) + self.middle;
-        draw_triangle(top, left, right, SHIP_COLOR);
+        draw_triangle(self.top, self.left, self.right, SHIP_COLOR);
     }
-    // just check if the line segments of triangle intersect with bars
+
+    // Call after reloading both
+    fn hits_bells(&self, barbell: &Barbell) -> bool {
+        let v = [self.left, self.right, self.top];
+        for (i, point1) in v.iter().enumerate() {
+            for (j, point2) in v.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                if intersect(
+                    point1,
+                    point2,
+                    &barbell.right_bell_top,
+                    &barbell.right_bell_bot,
+                ) {
+                    return true;
+                }
+                if intersect(
+                    point1,
+                    point2,
+                    &barbell.left_bell_top,
+                    &barbell.left_bell_bot,
+                ) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn hits_center(&self, barbell: &Barbell) -> bool {
+        let v = [self.left, self.right, self.top];
+        for (i, point1) in v.iter().enumerate() {
+            for (j, point2) in v.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                if intersect(point1, point2, &barbell.right, &barbell.left) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn reload(&mut self) {
+        let rotation = Mat2::from_angle(self.rot);
+        self.top = (rotation * Self::HEIGHT) + self.middle;
+        self.right = (rotation * Self::RIGHT) + self.middle;
+        self.left = (rotation * Self::LEFT) + self.middle;
+    }
 
     fn rotate(&mut self, angle: f32) {
         self.rot += angle;
@@ -63,6 +113,7 @@ impl Ship {
         self.middle += self.vel;
         wrap(&mut self.middle);
         self.vel *= 0.90;
+        self.reload()
     }
 
     fn accelerate(&mut self, delta: Vec2) {
@@ -78,6 +129,13 @@ struct Barbell {
     rot: f32,
     vel: Vec2,
     clockwise: bool,
+    // Loaded
+    left: Vec2,
+    right: Vec2,
+    left_bell_top: Vec2,
+    left_bell_bot: Vec2,
+    right_bell_top: Vec2,
+    right_bell_bot: Vec2,
 }
 
 impl Barbell {
@@ -89,52 +147,62 @@ impl Barbell {
     const RIGHT_BELL_TOP: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
 
     fn draw(&self) {
+        // Draw bar
+        draw_line(
+            self.left.x,
+            self.left.y,
+            self.right.x,
+            self.right.y,
+            3.0,
+            BARBELL_COLOR,
+        );
+        // Draw self.left bell
+        draw_line(
+            self.left.x,
+            self.left.y,
+            self.left_bell_top.x,
+            self.left_bell_top.y,
+            3.0,
+            BARBELL_COLOR,
+        );
+        draw_line(
+            self.left.x,
+            self.left.y,
+            self.left_bell_bot.x,
+            self.left_bell_bot.y,
+            3.0,
+            BARBELL_COLOR,
+        );
+        // Draw self.right bell
+        draw_line(
+            self.right.x,
+            self.right.y,
+            self.right_bell_top.x,
+            self.right_bell_top.y,
+            3.0,
+            BARBELL_COLOR,
+        );
+        draw_line(
+            self.right.x,
+            self.right.y,
+            self.right_bell_bot.x,
+            self.right_bell_bot.y,
+            3.0,
+            BARBELL_COLOR,
+        );
+    }
+
+    fn reload(&mut self) {
         let rotation = Mat2::from_angle(self.rot);
         // Rotate bar
-        let left = (rotation * Self::LEFT) + self.middle;
-        let right = (rotation * Self::RIGHT) + self.middle;
+        self.left = (rotation * Self::LEFT) + self.middle;
+        self.right = (rotation * Self::RIGHT) + self.middle;
         // Rotate left bell
-        let left_bell_bot = (rotation * Self::LEFT_BELL_BOT) + self.middle;
-        let left_bell_top = (rotation * Self::LEFT_BELL_TOP) + self.middle;
+        self.left_bell_bot = (rotation * Self::LEFT_BELL_BOT) + self.middle;
+        self.left_bell_top = (rotation * Self::LEFT_BELL_TOP) + self.middle;
         // Rotate right bell
-        let right_bell_bot = (rotation * Self::RIGHT_BELL_BOT) + self.middle;
-        let right_bell_top = (rotation * Self::RIGHT_BELL_TOP) + self.middle;
-        // Draw bar
-        draw_line(left.x, left.y, right.x, right.y, 3.0, BARBELL_COLOR);
-        // Draw left bell
-        draw_line(
-            left.x,
-            left.y,
-            left_bell_top.x,
-            left_bell_top.y,
-            3.0,
-            BARBELL_COLOR,
-        );
-        draw_line(
-            left.x,
-            left.y,
-            left_bell_bot.x,
-            left_bell_bot.y,
-            3.0,
-            BARBELL_COLOR,
-        );
-        // Draw right bell
-        draw_line(
-            right.x,
-            right.y,
-            right_bell_top.x,
-            right_bell_top.y,
-            3.0,
-            BARBELL_COLOR,
-        );
-        draw_line(
-            right.x,
-            right.y,
-            right_bell_bot.x,
-            right_bell_bot.y,
-            3.0,
-            BARBELL_COLOR,
-        );
+        self.right_bell_bot = (rotation * Self::RIGHT_BELL_BOT) + self.middle;
+        self.right_bell_top = (rotation * Self::RIGHT_BELL_TOP) + self.middle;
     }
 
     fn rotate(&mut self) {
@@ -154,6 +222,7 @@ impl Barbell {
     fn vroom(&mut self) {
         self.middle += self.vel;
         wrap(&mut self.middle);
+        self.reload();
     }
 }
 
@@ -179,6 +248,10 @@ async fn main() {
         middle: mid,
         rot: 0.0,
         vel: Vec2::ZERO,
+        // Loaded
+        top: Vec2::ZERO,
+        right: Vec2::ZERO,
+        left: Vec2::ZERO,
     };
     let mut barbell_middle = Vec2::new(rand() as f32, rand() as f32);
     wrap(&mut barbell_middle);
@@ -189,10 +262,17 @@ async fn main() {
         rot: rand() as f32,
         vel: Vec2::new(rx, ry),
         clockwise: true,
+        // Loaded
+        right: Vec2::ZERO,
+        left: Vec2::ZERO,
+        left_bell_top: Vec2::ZERO,
+        left_bell_bot: Vec2::ZERO,
+        right_bell_top: Vec2::ZERO,
+        right_bell_bot: Vec2::ZERO,
     };
     let rotation = ROTATION.to_radians();
     loop {
-        clear_background(LIGHTGRAY);
+        clear_background(WHITE);
         if is_key_down(KeyCode::Right) {
             ship.rotate(rotation);
         }
@@ -209,10 +289,21 @@ async fn main() {
             ship.accelerate(acc);
         }
         barbell.rotate();
+
         barbell.vroom();
-        barbell.draw();
         ship.vroom();
+
+        // check if collision
+        if ship.hits_bells(&barbell) {
+            draw_text("NO", 50.0, 50.0, 50.0, RED)
+        }
+        // check if collision
+        if ship.hits_center(&barbell) {
+            draw_text("YES", 70.0, 70.0, 70.0, GREEN)
+        }
+
         ship.draw();
+        barbell.draw();
         draw_text("barbells", 20.0, 20.0, 20.0, BLUE);
         next_frame().await
     }
