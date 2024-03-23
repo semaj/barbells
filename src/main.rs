@@ -139,6 +139,16 @@ impl Ship {
             self.vel = self.vel.normalize() * 10.0;
         }
     }
+
+    fn deccelerate(&mut self) {
+        let orientation = self.rot + (PI / 2.0);
+        // println!("o {}", orientation.to_degrees() % 360.0);
+        let acc = Vec2::new(-orientation.cos(), -orientation.sin()) * 1.0;
+        self.vel -= acc;
+        if self.vel.length() > 10.0 {
+            self.vel = self.vel.normalize() * 10.0;
+        }
+    }
 }
 
 fn random_pos() -> Vec2 {
@@ -364,7 +374,7 @@ async fn main() {
             game.ship.rotate(-ship_rotation_delta_rad);
         }
         if is_key_down(KeyCode::Down) {
-            // TODO
+            game.ship.deccelerate();
         }
         if is_key_down(KeyCode::Up) {
             game.ship.accelerate();
