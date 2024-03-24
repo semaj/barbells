@@ -5,7 +5,7 @@ const NUM_BARBELL_BASE: usize = 2;
 const PI: f32 = std::f32::consts::PI;
 const SHIP_HEIGHT: f32 = 25.0;
 const SHIP_BASE: f32 = 12.5;
-const BARBELL_WIDTH: f32 = 100.0;
+const BARBELL_WIDTH: f32 = 150.0;
 const SHIP_ROTATION_DELTA: f32 = 7.0;
 const BARBELL_COLOR: Color = BLUE;
 const SHIP_COLOR: Color = LIME;
@@ -170,18 +170,19 @@ struct Barbell {
     right_bell_top: Vec2,
     right_bell_bot: Vec2,
 }
+const BELL_FACTOR: f32 = 10.0;
 
 impl Barbell {
     const LEFT: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, 0.0);
     const RIGHT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, 0.0);
-    const LEFT_BELL_BOT: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, BARBELL_WIDTH / 6.0);
-    const LEFT_BELL_TOP: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
-    const RIGHT_BELL_BOT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, BARBELL_WIDTH / 6.0);
-    const RIGHT_BELL_TOP: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / 6.0);
+    const LEFT_BELL_BOT: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, BARBELL_WIDTH / BELL_FACTOR);
+    const LEFT_BELL_TOP: Vec2 = Vec2::new(-BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / BELL_FACTOR);
+    const RIGHT_BELL_BOT: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, BARBELL_WIDTH / BELL_FACTOR);
+    const RIGHT_BELL_TOP: Vec2 = Vec2::new(BARBELL_WIDTH / 2.0, -BARBELL_WIDTH / BELL_FACTOR);
 
     fn new(ship_middle: Vec2) -> Self {
         let mut barbell_middle = random_pos();
-        while barbell_middle.distance(ship_middle) < SHIP_HEIGHT * 4.0 {
+        while barbell_middle.distance(ship_middle) < SHIP_HEIGHT * 10.0 {
             barbell_middle = random_pos();
         }
         let rx = gen_range(-4.0, 4.0);
