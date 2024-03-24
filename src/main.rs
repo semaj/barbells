@@ -370,16 +370,16 @@ async fn main() {
             next_frame().await;
             continue;
         }
-        if is_key_down(KeyCode::Right) {
+        if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
             game.ship.rotate(ship_rotation_delta_rad);
         }
-        if is_key_down(KeyCode::Left) {
+        if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
             game.ship.rotate(-ship_rotation_delta_rad);
         }
-        if is_key_down(KeyCode::Down) {
+        if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
             game.ship.deccelerate();
         }
-        if is_key_down(KeyCode::Up) {
+        if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
             game.ship.accelerate();
         }
         game.step();
