@@ -6,7 +6,7 @@ const PI: f32 = std::f32::consts::PI;
 const SHIP_HEIGHT: f32 = 25.0;
 const SHIP_BASE: f32 = 12.5;
 const BARBELL_WIDTH: f32 = 100.0;
-const SHIP_ROTATION_DELTA: f32 = 10.0;
+const SHIP_ROTATION_DELTA: f32 = 7.0;
 const BARBELL_COLOR: Color = BLUE;
 const SHIP_COLOR: Color = LIME;
 
@@ -72,7 +72,7 @@ impl Ship {
         let v = [self.left, self.right, self.top];
         for (i, point1) in v.iter().enumerate() {
             for (j, point2) in v.iter().enumerate() {
-                if i == j {
+                if j <= i {
                     continue;
                 }
                 if intersect(
@@ -326,6 +326,7 @@ impl Game {
             barbell.vroom();
             if self.ship.hits_bells(barbell) {
                 self.game_over = true;
+                return;
             }
         }
         self.barbells
@@ -361,6 +362,7 @@ async fn main() {
         draw_text(&format!("level: {}", game.level), 20.0, 50.0, 20.0, BLUE);
         if game.game_over {
             draw_text("GAME OVER (press enter)", 150.0, 50.0, 50.0, RED);
+            game.draw();
             if is_key_down(KeyCode::Enter) {
                 game = Game::new();
             }
@@ -379,9 +381,6 @@ async fn main() {
         if is_key_down(KeyCode::Up) {
             game.ship.accelerate();
         }
-        // if is_key_down(KeyCode::Enter) {
-        //     game = Game::new();
-        // }
         game.step();
         game.draw();
 
